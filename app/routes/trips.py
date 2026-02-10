@@ -1,0 +1,106 @@
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, Header, HTTPException
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models import Trip, Member
+from app.deps import generate_access_token, generate_creator_token, get_trip_by_token, verify_creator
+from app.schemas import CreateTripIn, UpdateTripIn
+from app.serializers import serialize_trip
+
+router = APIRouter()
+
+
+@router.post("/trips", status_code=201)
+def create_trip(data: CreateTripIn, db: Session = Depends(get_db)):
+    if len(data.members) < 2:
+        raise HTTPException(status_code=400, detail="At least 2 members required")
+    if data.creator_name not in data.members:
+        raise HTTPException(status_code=400, detail="Creator must be one of the members")
+    if data.currency not in ("USD", "HKD", "JPY"):
+        raise HTTPException(status_code=400, detail="Currency must be USD, HKD, or JPY")
+
+    trip = Trip(
+        access_token=generate_access_token(),
+        creator_token=generate_creator_token(),
+        name=data.name,
+        currency=data.currency,
+    )
+    db.add(trip)
+    db.flush()  # get trip.id
+
+    creator_member = None
+    for name in data.members:
+        member = Member(trip_id=trip.id, name=name)
+        db.add(member)
+        if name == data.creator_name:
+            creator_member = member
+
+    db.flush()  # get member IDs
+
+    if creator_member:
+        trip.creator_member_id = creator_member.id
+
+    db.commit()
+    db.refresh(trip)
+
+    return {
+        "trip": serialize_trip(trip, is_creator=True),
+        "creator_token": trip.creator_token,
+    }
+
+
+@router.get("/trips/{access_token}")
+def get_trip(
+    access_token: str,
+    db: Session = Depends(get_db),
+    x_creator_token: str | None = Header(None),
+):
+    trip = get_trip_by_token(access_token, db)
+    is_creator = bool(x_creator_token and x_creator_token == trip.creator_token)
+    return serialize_trip(trip, is_creator=is_creator)
+
+
+@router.patch("/trips/{access_token}")
+def update_trip(
+    access_token: str,
+    data: UpdateTripIn,
+    db: Session = Depends(get_db),
+    x_creator_token: str | None = Header(None),
+):
+    trip = get_trip_by_token(access_token, db)
+    trip.name = data.name
+    trip.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(trip)
+    is_creator = bool(x_creator_token and x_creator_token == trip.creator_token)
+    return serialize_trip(trip, is_creator=is_creator)
+
+
+@router.delete("/trips/{access_token}", status_code=204)
+def delete_trip(
+    access_token: str,
+    db: Session = Depends(get_db),
+    x_creator_token: str | None = Header(None),
+):
+    trip = get_trip_by_token(access_token, db)
+    verify_creator(trip, x_creator_token)
+    db.delete(trip)
+    db.commit()
+    return None
+
+
+@router.post("/trips/{access_token}/rotate-token")
+def rotate_token(
+    access_token: str,
+    db: Session = Depends(get_db),
+    x_creator_token: str | None = Header(None),
+):
+    trip = get_trip_by_token(access_token, db)
+    verify_creator(trip, x_creator_token)
+    trip.access_token = generate_access_token()
+    trip.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(trip)
+    return {"access_token": trip.access_token}
