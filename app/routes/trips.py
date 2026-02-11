@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.email import send_trip_link
 from app.models import Trip, Member
 from app.deps import generate_access_token, generate_creator_token, get_trip_by_token, verify_creator
 from app.ratelimit import limiter
@@ -15,7 +16,7 @@ router = APIRouter()
 
 @router.post("/trips", status_code=201)
 @limiter.limit("5/hour")
-def create_trip(request: Request, data: CreateTripIn, db: Session = Depends(get_db)):
+def create_trip(request: Request, data: CreateTripIn, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     if len(data.members) < 2:
         raise HTTPException(status_code=400, detail="At least 2 members required")
     if data.creator_name not in data.members:
@@ -46,6 +47,9 @@ def create_trip(request: Request, data: CreateTripIn, db: Session = Depends(get_
 
     db.commit()
     db.refresh(trip)
+
+    if data.email:
+        background_tasks.add_task(send_trip_link, data.email, trip.name, trip.access_token)
 
     return {
         "trip": serialize_trip(trip, is_creator=True),

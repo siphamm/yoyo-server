@@ -8,6 +8,7 @@ class CreateTripIn(BaseModel):
     currency: str = "USD"
     members: list[str]  # list of member names
     creator_name: str
+    email: str | None = None
 
 
 class UpdateTripIn(BaseModel):
