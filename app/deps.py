@@ -1,6 +1,6 @@
 import secrets
 
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, Header, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -32,3 +32,8 @@ def verify_creator(
     if not x_creator_token or x_creator_token != trip.creator_token:
         raise HTTPException(status_code=403, detail="Creator token required")
     return trip
+
+
+def get_ctk(request: Request) -> str | None:
+    """Read the cookie tracking key from the request."""
+    return request.cookies.get("ctk")

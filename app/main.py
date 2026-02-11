@@ -7,6 +7,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.database import engine, Base
+from app.middleware import CTKMiddleware
 from app.ratelimit import limiter
 from app.routes import trips, members, expenses, settlements, exchange
 
@@ -21,9 +22,11 @@ origins = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in origins],
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Content-Type", "X-Creator-Token"],
 )
+app.add_middleware(CTKMiddleware)
 
 # Create tables (use Alembic in production)
 Base.metadata.create_all(bind=engine)
