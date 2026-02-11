@@ -5,6 +5,7 @@ def serialize_member(member) -> dict:
     return {
         "id": member.id,
         "name": member.name,
+        "user_id": member.user_id,
         "settled_by_id": member.settled_by_id,
         "settlementCurrency": member.settlement_currency,
     }

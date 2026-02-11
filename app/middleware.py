@@ -4,6 +4,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
+from app.database import SessionLocal
+from app.models import User
+
 CTK_COOKIE_NAME = "ctk"
 CTK_MAX_AGE = 315360000  # 10 years
 
@@ -22,6 +25,15 @@ class CTKMiddleware(BaseHTTPMiddleware):
         response: Response = await call_next(request)
 
         if new_ctk:
+            # Create a User row for this new CTK
+            db = SessionLocal()
+            try:
+                user = User(ctk=ctk)
+                db.add(user)
+                db.commit()
+            finally:
+                db.close()
+
             is_secure = request.url.hostname not in ("localhost", "127.0.0.1")
             response.set_cookie(
                 key=CTK_COOKIE_NAME,

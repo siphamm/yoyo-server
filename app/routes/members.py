@@ -1,11 +1,11 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Member, Expense, ExpenseMember, Settlement
-from app.deps import get_trip_by_token, verify_creator
+from app.deps import get_trip_by_token, get_user_by_ctk, verify_creator
 from app.schemas import AddMemberIn, UpdateMemberIn
 from app.serializers import serialize_member
 
@@ -116,3 +116,27 @@ def remove_member(
     trip.updated_at = datetime.utcnow()
     db.commit()
     return None
+
+
+@router.post("/trips/{access_token}/claim/{member_id}")
+def claim_member(
+    access_token: str,
+    member_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    trip = get_trip_by_token(access_token, db)
+    user = get_user_by_ctk(request, db)
+    if not user:
+        raise HTTPException(status_code=400, detail="No user found for this browser")
+
+    member = db.query(Member).filter(
+        Member.id == member_id, Member.trip_id == trip.id
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    member.user_id = user.id
+    db.commit()
+    db.refresh(member)
+    return serialize_member(member)

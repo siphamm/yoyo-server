@@ -39,6 +39,7 @@ class Member(Base):
     id = Column(String, primary_key=True, default=new_uuid)
     trip_id = Column(String, ForeignKey("trips.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     settled_by_id = Column(String, ForeignKey("members.id", ondelete="SET NULL"), nullable=True)
     settlement_currency = Column(String(3), nullable=True)  # NULL = same as group
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -89,6 +90,16 @@ class Settlement(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     trip = relationship("Trip", back_populates="settlements")
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True, default=new_uuid)
+    ctk = Column(String, unique=True, nullable=False, index=True)
+    name = Column(String(255), nullable=True)
+    email = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class ExchangeRate(Base):

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.email import send_trip_link
 from app.models import Trip, Member
-from app.deps import generate_access_token, generate_creator_token, get_trip_by_token, verify_creator
+from app.deps import generate_access_token, generate_creator_token, get_trip_by_token, get_user_by_ctk, verify_creator
 from app.ratelimit import limiter
 from app.schemas import CreateTripIn, UpdateTripIn
 from app.serializers import serialize_trip
@@ -44,6 +44,9 @@ def create_trip(request: Request, data: CreateTripIn, background_tasks: Backgrou
 
     if creator_member:
         trip.creator_member_id = creator_member.id
+        user = get_user_by_ctk(request, db)
+        if user:
+            creator_member.user_id = user.id
 
     db.commit()
     db.refresh(trip)

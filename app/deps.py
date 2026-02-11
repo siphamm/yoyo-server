@@ -4,7 +4,7 @@ from fastapi import Depends, Header, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Trip
+from app.models import Trip, User
 
 
 def generate_access_token() -> str:
@@ -37,3 +37,11 @@ def verify_creator(
 def get_ctk(request: Request) -> str | None:
     """Read the cookie tracking key from the request."""
     return request.cookies.get("ctk")
+
+
+def get_user_by_ctk(request: Request, db: Session) -> User | None:
+    """Look up the User associated with the request's ctk cookie."""
+    ctk = request.cookies.get("ctk")
+    if not ctk:
+        return None
+    return db.query(User).filter(User.ctk == ctk).first()
