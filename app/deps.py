@@ -36,12 +36,12 @@ def verify_creator(
 
 def get_ctk(request: Request) -> str | None:
     """Read the cookie tracking key from the request."""
-    return request.cookies.get("ctk")
+    return getattr(request.state, "ctk", None)
 
 
 def get_user_by_ctk(request: Request, db: Session) -> User | None:
     """Look up the User associated with the request's ctk cookie."""
-    ctk = request.cookies.get("ctk")
+    ctk = get_ctk(request)
     if not ctk:
         return None
     return db.query(User).filter(User.ctk == ctk).first()
@@ -49,7 +49,7 @@ def get_user_by_ctk(request: Request, db: Session) -> User | None:
 
 def get_or_create_user(request: Request, db: Session) -> User | None:
     """Look up or create a User for the request's ctk cookie."""
-    ctk = request.cookies.get("ctk")
+    ctk = get_ctk(request)
     if not ctk:
         return None
     user = db.query(User).filter(User.ctk == ctk).first()

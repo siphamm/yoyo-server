@@ -23,6 +23,9 @@ class CTKMiddleware(BaseHTTPMiddleware):
             ctk = secrets.token_urlsafe(24)
             new_ctk = True
 
+        # Make CTK available to route handlers via request.state
+        request.state.ctk = ctk
+
         response: Response = await call_next(request)
 
         if new_ctk:
