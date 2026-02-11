@@ -15,6 +15,10 @@ class CTKMiddleware(BaseHTTPMiddleware):
     """Assigns a cookie tracking key (ctk) to every visitor."""
 
     async def dispatch(self, request: Request, call_next) -> Response:
+        # Skip CTK processing for CORS preflight requests
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         ctk = request.cookies.get(CTK_COOKIE_NAME)
         new_ctk = False
 
