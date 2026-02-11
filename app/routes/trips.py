@@ -17,8 +17,8 @@ router = APIRouter()
 @router.post("/trips", status_code=201)
 @limiter.limit("5/hour")
 def create_trip(request: Request, data: CreateTripIn, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    if len(data.members) < 2:
-        raise HTTPException(status_code=400, detail="At least 2 members required")
+    if len(data.members) < 1:
+        raise HTTPException(status_code=400, detail="At least 1 member required")
     if data.creator_name not in data.members:
         raise HTTPException(status_code=400, detail="Creator must be one of the members")
     if data.currency not in ("USD", "HKD", "JPY"):
