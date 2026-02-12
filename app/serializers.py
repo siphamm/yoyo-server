@@ -43,6 +43,17 @@ def serialize_settlement(settlement: Settlement) -> dict:
     }
 
 
+def serialize_trip_summary(trip: Trip) -> dict:
+    return {
+        "access_token": trip.access_token,
+        "name": trip.name,
+        "currency": trip.currency,
+        "createdAt": trip.created_at.isoformat(),
+        "updatedAt": trip.updated_at.isoformat(),
+        "memberCount": len(trip.members),
+    }
+
+
 def serialize_trip(trip: Trip, is_creator: bool = False) -> dict:
     return {
         "id": trip.id,

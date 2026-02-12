@@ -1,4 +1,9 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models import Member, Trip
+from app.serializers import serialize_trip_summary
 
 router = APIRouter()
 
@@ -9,3 +14,18 @@ def get_me(request: Request):
     if not user:
         return None
     return {"id": user.id, "name": user.name}
+
+
+@router.get("/me/trips")
+def get_my_trips(request: Request, db: Session = Depends(get_db)):
+    user = request.state.user
+    if not user:
+        return []
+    trips = (
+        db.query(Trip)
+        .join(Member, Member.trip_id == Trip.id)
+        .filter(Member.user_id == user.id, Trip.is_deleted == False)  # noqa: E712
+        .order_by(Trip.updated_at.desc())
+        .all()
+    )
+    return [serialize_trip_summary(t) for t in trips]
