@@ -39,14 +39,14 @@ class CTKMiddleware(BaseHTTPMiddleware):
         response: Response = await call_next(request)
 
         if new_ctk:
-            is_secure = request.url.hostname not in ("localhost", "127.0.0.1")
+            is_local = request.url.hostname in ("localhost", "127.0.0.1")
             response.set_cookie(
                 key=CTK_COOKIE_NAME,
                 value=ctk,
                 max_age=CTK_MAX_AGE,
                 httponly=True,
-                samesite="lax",
-                secure=is_secure,
+                samesite="lax" if is_local else "none",
+                secure=not is_local,
                 path="/api",
             )
 
