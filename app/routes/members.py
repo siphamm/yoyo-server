@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Member, Expense, ExpenseMember, Settlement
 from app.deps import get_trip_by_token, get_or_create_user, verify_creator
+from app.exchange import SUPPORTED_CURRENCIES
 from app.schemas import AddMemberIn, UpdateMemberIn
 from app.serializers import serialize_member
 
@@ -67,7 +68,7 @@ def update_member(
     # Handle settlement_currency
     if "settlement_currency" in (data.model_fields_set or set()):
         sc = data.settlement_currency
-        if sc is not None and sc not in ("USD", "HKD", "JPY"):
+        if sc is not None and sc not in SUPPORTED_CURRENCIES:
             raise HTTPException(status_code=400, detail="Invalid settlement currency")
         member.settlement_currency = sc
 

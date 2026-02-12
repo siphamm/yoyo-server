@@ -1,11 +1,15 @@
 from datetime import datetime, date as date_type, timedelta
 
 import httpx
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import ExchangeRate
 
-SUPPORTED_CURRENCIES = ("USD", "HKD", "JPY")
+SUPPORTED_CURRENCIES = (
+    "USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "HKD",
+    "SGD", "THB", "KRW", "INR", "CNY", "NZD", "MXN",
+)
 FRANKFURTER_BASE = "https://api.frankfurter.dev/v1"
 
 
@@ -70,7 +74,11 @@ def get_rate(db: Session, base: str, target: str) -> tuple[float, date_type]:
                 fetched_at=now,
             )
         )
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Race condition: another request already inserted this rate
+        db.rollback()
 
     return float(rate_value), rate_date
 

@@ -7,6 +7,7 @@ from app.database import get_db
 from app.email import send_trip_link
 from app.models import Trip, Member
 from app.deps import generate_access_token, get_trip_by_token, get_or_create_user, verify_creator
+from app.exchange import SUPPORTED_CURRENCIES
 from app.ratelimit import limiter
 from app.schemas import CreateTripIn, UpdateTripIn
 from app.serializers import serialize_trip
@@ -21,8 +22,8 @@ def create_trip(request: Request, data: CreateTripIn, background_tasks: Backgrou
         raise HTTPException(status_code=400, detail="At least 1 member required")
     if data.creator_name not in data.members:
         raise HTTPException(status_code=400, detail="Creator must be one of the members")
-    if data.currency not in ("USD", "HKD", "JPY"):
-        raise HTTPException(status_code=400, detail="Currency must be USD, HKD, or JPY")
+    if data.currency not in SUPPORTED_CURRENCIES:
+        raise HTTPException(status_code=400, detail="Unsupported currency")
 
     trip = Trip(
         access_token=generate_access_token(),
@@ -93,11 +94,19 @@ def update_trip(
     if data.name is not None:
         trip.name = data.name
 
-    # settlement_currency: use UNSET sentinel to distinguish null (clear) from absent
+    # currency: validate if provided
     raw = data.model_dump(exclude_unset=True)
+    if "currency" in raw:
+        c = data.currency
+        if c is not None and c not in SUPPORTED_CURRENCIES:
+            raise HTTPException(status_code=400, detail="Unsupported currency")
+        if c is not None:
+            trip.currency = c
+
+    # settlement_currency: use UNSET sentinel to distinguish null (clear) from absent
     if "settlement_currency" in raw:
         sc = data.settlement_currency
-        if sc is not None and sc not in ("USD", "HKD", "JPY"):
+        if sc is not None and sc not in SUPPORTED_CURRENCIES:
             raise HTTPException(status_code=400, detail="Invalid settlement currency")
         trip.settlement_currency = sc
 

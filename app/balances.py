@@ -3,8 +3,20 @@
 # Currency decimal places (must match frontend lib/currency.ts)
 CURRENCY_DECIMALS: dict[str, int] = {
     "USD": 2,
-    "HKD": 2,
+    "EUR": 2,
+    "GBP": 2,
     "JPY": 0,
+    "CAD": 2,
+    "AUD": 2,
+    "CHF": 2,
+    "HKD": 2,
+    "SGD": 2,
+    "THB": 2,
+    "KRW": 0,
+    "INR": 2,
+    "CNY": 2,
+    "NZD": 2,
+    "MXN": 2,
 }
 
 
