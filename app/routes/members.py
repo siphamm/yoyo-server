@@ -7,8 +7,8 @@ from app.database import get_db
 from app.models import Member, Expense, ExpenseMember, Settlement
 from app.deps import get_trip_by_token, get_or_create_user, verify_creator
 from app.exchange import SUPPORTED_CURRENCIES
-from app.schemas import AddMemberIn, UpdateMemberIn
-from app.serializers import serialize_member
+from app.schemas import AddMemberIn, JoinTripIn, UpdateMemberIn
+from app.serializers import serialize_member, serialize_trip
 
 router = APIRouter()
 
@@ -140,6 +140,10 @@ def claim_member(
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
 
+    # Prevent claiming the creator member
+    if trip.creator_member_id and member.id == trip.creator_member_id:
+        raise HTTPException(status_code=403, detail="Cannot claim the trip creator")
+
     # Clear this user's claim on any other member in the same trip
     db.query(Member).filter(
         Member.trip_id == trip.id,
@@ -151,3 +155,43 @@ def claim_member(
     db.commit()
     db.refresh(member)
     return serialize_member(member)
+
+
+@router.post("/trips/{access_token}/join")
+def join_trip(
+    access_token: str,
+    data: JoinTripIn,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    trip = get_trip_by_token(access_token, db)
+    if not trip.allow_member_self_join:
+        raise HTTPException(status_code=403, detail="Self-join is not allowed for this trip")
+
+    user = get_or_create_user(request, db)
+    if not user:
+        raise HTTPException(status_code=400, detail="No user found for this browser")
+
+    # Check if user already has a claimed member in this trip
+    existing_claim = db.query(Member).filter(
+        Member.trip_id == trip.id, Member.user_id == user.id
+    ).first()
+    if existing_claim:
+        raise HTTPException(status_code=409, detail="You already have a member in this trip")
+
+    # Check for name collision
+    name_match = db.query(Member).filter(
+        Member.trip_id == trip.id, Member.name == data.name
+    ).first()
+    if name_match and not data.force:
+        return {"conflict": True, "existing_member_id": str(name_match.id), "message": f"A member named '{data.name}' already exists"}
+
+    # Create new member and auto-claim
+    member = Member(trip_id=trip.id, name=data.name)
+    db.add(member)
+    db.flush()
+    member.user_id = user.id
+    trip.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(trip)
+    return serialize_trip(trip, is_creator=False, user_id=user.id)

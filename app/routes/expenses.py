@@ -1,11 +1,11 @@
 from datetime import datetime, date as date_type
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Expense, ExpenseMember, Member
-from app.deps import get_trip_by_token
+from app.deps import get_trip_by_token, verify_creator
 from app.schemas import ExpenseIn
 from app.serializers import serialize_expense
 
@@ -42,9 +42,12 @@ def _sync_expense_members(db: Session, expense: Expense, involved_members: list[
 def add_expense(
     access_token: str,
     data: ExpenseIn,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     trip = get_trip_by_token(access_token, db)
+    if not trip.allow_member_edit_expenses:
+        verify_creator(trip, request, db)
     _validate_expense_members(db, trip.id, data.involved_members, data.paid_by)
 
     expense = Expense(
@@ -72,9 +75,12 @@ def update_expense(
     access_token: str,
     expense_id: str,
     data: ExpenseIn,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     trip = get_trip_by_token(access_token, db)
+    if not trip.allow_member_edit_expenses:
+        verify_creator(trip, request, db)
     expense = db.query(Expense).filter(
         Expense.id == expense_id, Expense.trip_id == trip.id
     ).first()
@@ -102,9 +108,12 @@ def update_expense(
 def delete_expense(
     access_token: str,
     expense_id: str,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     trip = get_trip_by_token(access_token, db)
+    if not trip.allow_member_edit_expenses:
+        verify_creator(trip, request, db)
     expense = db.query(Expense).filter(
         Expense.id == expense_id, Expense.trip_id == trip.id
     ).first()

@@ -129,6 +129,12 @@ def update_trip(
         pw = data.password
         trip.password_hash = _hash_password(pw) if pw else None
 
+    # permission settings
+    if "allow_member_edit_expenses" in raw:
+        trip.allow_member_edit_expenses = data.allow_member_edit_expenses
+    if "allow_member_self_join" in raw:
+        trip.allow_member_self_join = data.allow_member_self_join
+
     trip.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(trip)

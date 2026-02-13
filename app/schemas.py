@@ -16,12 +16,19 @@ class UpdateTripIn(BaseModel):
     currency: str | None = None
     settlement_currency: str | None = None
     password: str | None = None
+    allow_member_edit_expenses: bool | None = None
+    allow_member_self_join: bool | None = None
 
 
 # --- Members ---
 
 class AddMemberIn(BaseModel):
     name: str
+
+
+class JoinTripIn(BaseModel):
+    name: str
+    force: bool = False  # if True, add even if name matches existing member
 
 
 class UpdateMemberIn(BaseModel):
