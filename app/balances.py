@@ -358,6 +358,18 @@ def consolidate_opposite_debts(
     return result
 
 
+def _merge_same_direction_debts(debts: list[dict]) -> list[dict]:
+    """Merge debts with the same from, to, and currency into one."""
+    merged: dict[str, dict] = {}
+    for debt in debts:
+        key = f"{debt['from']}|{debt['to']}|{debt['currency']}"
+        if key in merged:
+            merged[key]["amount"] += debt["amount"]
+        else:
+            merged[key] = {**debt}
+    return [d for d in merged.values() if d["amount"] > 0]
+
+
 def simplify_debts(
     net_balances: dict[str, dict[str, int]],
     settled_by: dict[str, str],
@@ -376,7 +388,8 @@ def simplify_debts(
 
     if rates:
         converted = apply_member_settlement_currencies(debts, members, rates)
-        return consolidate_opposite_debts(converted, members, rates)
+        merged = _merge_same_direction_debts(converted)
+        return consolidate_opposite_debts(merged, members, rates)
 
     return debts
 
@@ -393,4 +406,5 @@ def simplify_debts_in_currency(
     effective = merge_balances(combined, settled_by)
     debts = _greedy_simplify(effective, target_currency)
     converted = apply_member_settlement_currencies(debts, members, rates)
-    return consolidate_opposite_debts(converted, members, rates)
+    merged = _merge_same_direction_debts(converted)
+    return consolidate_opposite_debts(merged, members, rates)
