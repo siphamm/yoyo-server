@@ -1,11 +1,11 @@
 from datetime import datetime, date as date_type
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Settlement, Member
-from app.deps import get_trip_by_token
+from app.deps import get_trip_by_token, verify_creator
 from app.schemas import SettlementIn
 from app.serializers import serialize_settlement
 
@@ -16,9 +16,12 @@ router = APIRouter()
 def add_settlement(
     access_token: str,
     data: SettlementIn,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     trip = get_trip_by_token(access_token, db)
+    if not trip.allow_member_edit_expenses:
+        verify_creator(trip, request, db)
 
     # Validate members belong to this trip
     trip_member_ids = {
@@ -48,9 +51,12 @@ def add_settlement(
 def delete_settlement(
     access_token: str,
     settlement_id: str,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     trip = get_trip_by_token(access_token, db)
+    if not trip.allow_member_edit_expenses:
+        verify_creator(trip, request, db)
     settlement = db.query(Settlement).filter(
         Settlement.id == settlement_id, Settlement.trip_id == trip.id
     ).first()
