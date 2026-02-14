@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.email import send_trip_link
-from app.models import Trip, Member
+from app.models import Trip, Member, UserTrip
 from app.deps import generate_access_token, get_trip_by_token, get_or_create_user, verify_creator
 from app.exchange import SUPPORTED_CURRENCIES
 from app.ratelimit import limiter
@@ -19,6 +19,16 @@ logger = logging.getLogger("yoyo")
 
 def _hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
+
+
+def _record_trip_visit(user_id: int, trip_id: int, db: Session) -> None:
+    existing = db.query(UserTrip).filter(UserTrip.user_id == user_id, UserTrip.trip_id == trip_id).first()
+    if existing:
+        existing.last_visited_at = datetime.utcnow()
+    else:
+        db.add(UserTrip(user_id=user_id, trip_id=trip_id, last_visited_at=datetime.utcnow()))
+    db.commit()
+
 
 router = APIRouter()
 
@@ -61,6 +71,11 @@ def create_trip(request: Request, data: CreateTripIn, background_tasks: Backgrou
 
     db.commit()
     db.refresh(trip)
+
+    # Record user-trip association
+    if user:
+        _record_trip_visit(user.id, trip.id, db)
+
     logger.info("Trip created", extra={"extra_data": {"trip_id": trip.id, "access_token": trip.access_token}})
 
     if data.email:
@@ -79,7 +94,7 @@ def get_trip(
     db: Session = Depends(get_db),
 ):
     trip = get_trip_by_token(access_token, db)
-    user = getattr(request.state, "user", None)
+    user = get_or_create_user(request, db)
     user_id = user.id if user else None
 
     # Determine creator status
@@ -96,6 +111,10 @@ def get_trip(
                 status_code=403,
                 detail={"message": "Password required", "password_protected": True},
             )
+
+    # Record user-trip association for "Your trips" on homepage
+    if user:
+        _record_trip_visit(user.id, trip.id, db)
 
     return serialize_trip(trip, is_creator=is_creator, user_id=user_id)
 
