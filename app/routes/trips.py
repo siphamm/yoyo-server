@@ -37,6 +37,7 @@ def create_trip(request: Request, data: CreateTripIn, background_tasks: Backgrou
         access_token=generate_access_token(),
         name=data.name,
         currency=data.currency,
+        settlement_currency=data.currency,
     )
     db.add(trip)
     db.flush()  # get trip.id
