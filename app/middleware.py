@@ -1,4 +1,6 @@
+import logging
 import secrets
+import time
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -7,8 +9,12 @@ from starlette.responses import Response
 from app.database import SessionLocal
 from app.models import User
 
+logger = logging.getLogger("yoyo")
+
 CTK_COOKIE_NAME = "ctk"
 CTK_MAX_AGE = 315360000  # 10 years
+
+SKIP_LOG_PATHS = {"/health", "/docs", "/openapi.json", "/redoc"}
 
 
 class CTKMiddleware(BaseHTTPMiddleware):
@@ -51,4 +57,30 @@ class CTKMiddleware(BaseHTTPMiddleware):
                 domain=".getyoyo.co" if not is_local else None,
             )
 
+        return response
+
+
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    """Logs method, path, status code, duration, and ctk for each request."""
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        start = time.time()
+        response = await call_next(request)
+        duration_ms = round((time.time() - start) * 1000)
+
+        path = request.url.path
+        if path in SKIP_LOG_PATHS:
+            return response
+
+        ctk = getattr(request.state, "ctk", None)
+        logger.info(
+            f"{request.method} {path} {response.status_code}",
+            extra={"extra_data": {
+                "method": request.method,
+                "path": path,
+                "status": response.status_code,
+                "duration_ms": duration_ms,
+                "ctk": ctk,
+            }},
+        )
         return response

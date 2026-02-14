@@ -1,5 +1,6 @@
 import os
 
+import sentry_sdk
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,11 +8,23 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.database import engine, Base
-from app.middleware import CTKMiddleware
+from app.logging_config import setup_logging
+from app.middleware import CTKMiddleware, RequestLoggingMiddleware
 from app.ratelimit import limiter
 from app.routes import trips, members, expenses, settlements, exchange, users, balances
 
 load_dotenv()
+
+# Sentry
+sentry_dsn = os.getenv("SENTRY_DSN")
+if sentry_dsn:
+    sentry_sdk.init(
+        dsn=sentry_dsn,
+        traces_sample_rate=0.1,
+        send_default_pii=False,
+    )
+
+logger = setup_logging()
 
 app = FastAPI(title="Yoyo API", version="0.1.0")
 app.state.limiter = limiter
@@ -26,6 +39,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Content-Type"],
 )
+app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(CTKMiddleware)
 
 # Create tables (use Alembic in production)

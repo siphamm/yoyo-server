@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, date as date_type
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -8,6 +9,8 @@ from app.models import Settlement, Member
 from app.deps import get_trip_by_token, verify_creator
 from app.schemas import SettlementIn
 from app.serializers import serialize_settlement
+
+logger = logging.getLogger("yoyo")
 
 router = APIRouter()
 
@@ -44,6 +47,7 @@ def add_settlement(
     trip.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(settlement)
+    logger.info("Settlement recorded", extra={"extra_data": {"trip_id": trip.id, "from": data.from_member, "to": data.to}})
     return serialize_settlement(settlement)
 
 
@@ -66,4 +70,5 @@ def delete_settlement(
     db.delete(settlement)
     trip.updated_at = datetime.utcnow()
     db.commit()
+    logger.info("Settlement deleted", extra={"extra_data": {"trip_id": trip.id, "settlement_id": int(settlement_id)}})
     return None

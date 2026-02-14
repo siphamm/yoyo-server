@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -9,6 +10,8 @@ from app.deps import get_trip_by_token, get_or_create_user, verify_creator
 from app.exchange import SUPPORTED_CURRENCIES
 from app.schemas import AddMemberIn, JoinTripIn, UpdateMemberIn
 from app.serializers import serialize_member, serialize_trip
+
+logger = logging.getLogger("yoyo")
 
 router = APIRouter()
 
@@ -28,6 +31,7 @@ def add_member(
     trip.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(member)
+    logger.info("Member added", extra={"extra_data": {"trip_id": trip.id, "member_name": data.name}})
     return serialize_member(member)
 
 
@@ -154,6 +158,7 @@ def claim_member(
     member.user_id = user.id
     db.commit()
     db.refresh(member)
+    logger.info("Member claimed", extra={"extra_data": {"trip_id": trip.id, "member_id": member.id, "user_id": user.id}})
     return serialize_member(member)
 
 
@@ -194,4 +199,5 @@ def join_trip(
     trip.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(trip)
+    logger.info("Member joined", extra={"extra_data": {"trip_id": trip.id, "member_name": data.name, "user_id": user.id}})
     return serialize_trip(trip, is_creator=False, user_id=user.id)

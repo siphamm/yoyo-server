@@ -1,4 +1,5 @@
 import hashlib
+import logging
 from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
@@ -12,6 +13,8 @@ from app.exchange import SUPPORTED_CURRENCIES
 from app.ratelimit import limiter
 from app.schemas import CreateTripIn, UpdateTripIn
 from app.serializers import serialize_trip
+
+logger = logging.getLogger("yoyo")
 
 
 def _hash_password(password: str) -> str:
@@ -57,6 +60,7 @@ def create_trip(request: Request, data: CreateTripIn, background_tasks: Backgrou
 
     db.commit()
     db.refresh(trip)
+    logger.info("Trip created", extra={"extra_data": {"trip_id": trip.id, "access_token": trip.access_token}})
 
     if data.email:
         background_tasks.add_task(send_trip_link, data.email, trip.name, trip.access_token)
@@ -153,6 +157,7 @@ def delete_trip(
     trip.is_deleted = True
     trip.updated_at = datetime.utcnow()
     db.commit()
+    logger.info("Trip deleted", extra={"extra_data": {"trip_id": trip.id}})
     return None
 
 

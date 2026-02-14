@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, date as date_type, timedelta
 
 import httpx
@@ -5,6 +6,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import ExchangeRate
+
+logger = logging.getLogger("yoyo")
 
 SUPPORTED_CURRENCIES = (
     "AUD", "BRL", "CAD", "CHF", "CNY", "CZK", "DKK", "EUR",
@@ -42,12 +45,16 @@ def get_rate(db: Session, base: str, target: str) -> tuple[float, date_type]:
         return float(cached.rate), cached.date
 
     # Fetch from API
-    resp = httpx.get(
-        f"{FRANKFURTER_BASE}/latest",
-        params={"from": base, "to": target},
-        timeout=10,
-    )
-    resp.raise_for_status()
+    try:
+        resp = httpx.get(
+            f"{FRANKFURTER_BASE}/latest",
+            params={"from": base, "to": target},
+            timeout=10,
+        )
+        resp.raise_for_status()
+    except Exception:
+        logger.error("Exchange rate fetch failed", extra={"extra_data": {"base": base, "target": target}}, exc_info=True)
+        raise
     data = resp.json()
 
     rate_value = data["rates"][target]

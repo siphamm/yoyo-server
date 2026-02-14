@@ -1,3 +1,4 @@
+import logging
 import secrets
 
 from fastapi import Depends, HTTPException, Request
@@ -5,6 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Member, Trip, User
+
+logger = logging.getLogger("yoyo")
 
 
 def generate_access_token() -> str:
@@ -33,6 +36,7 @@ def verify_creator(trip: Trip, request: Request, db: Session) -> None:
         if creator_member and creator_member.user_id == user.id:
             return
 
+    logger.warning("Creator verification failed", extra={"extra_data": {"trip_id": trip.id}})
     raise HTTPException(status_code=403, detail="Creator token required")
 
 

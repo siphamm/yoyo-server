@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, date as date_type
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -8,6 +9,8 @@ from app.models import Expense, ExpenseMember, Member
 from app.deps import get_trip_by_token, verify_creator
 from app.schemas import ExpenseIn
 from app.serializers import serialize_expense
+
+logger = logging.getLogger("yoyo")
 
 router = APIRouter()
 
@@ -67,6 +70,7 @@ def add_expense(
     trip.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(expense)
+    logger.info("Expense added", extra={"extra_data": {"trip_id": trip.id, "expense_id": expense.id}})
     return serialize_expense(expense)
 
 
@@ -101,6 +105,7 @@ def update_expense(
     trip.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(expense)
+    logger.info("Expense updated", extra={"extra_data": {"trip_id": trip.id, "expense_id": expense.id}})
     return serialize_expense(expense)
 
 
@@ -123,4 +128,5 @@ def delete_expense(
     db.delete(expense)
     trip.updated_at = datetime.utcnow()
     db.commit()
+    logger.info("Expense deleted", extra={"extra_data": {"trip_id": trip.id, "expense_id": int(expense_id)}})
     return None
