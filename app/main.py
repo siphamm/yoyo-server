@@ -11,17 +11,26 @@ from app.database import engine, Base
 from app.logging_config import setup_logging
 from app.middleware import CTKMiddleware, RequestLoggingMiddleware
 from app.ratelimit import limiter
-from app.routes import trips, members, expenses, settlements, exchange, users, balances
+from app.routes import trips, members, expenses, settlements, exchange, users, balances, receipts
 
 load_dotenv()
 
 # Sentry
 sentry_dsn = os.getenv("SENTRY_DSN")
 if sentry_dsn:
+    # Disable the auto-detected OpenAI Agents integration due to
+    # version incompatibility (sentry-sdk expects a different internal API)
+    _disabled = []
+    try:
+        from sentry_sdk.integrations.openai_agents import OpenAIAgentsIntegration
+        _disabled.append(OpenAIAgentsIntegration)
+    except ImportError:
+        pass
     sentry_sdk.init(
         dsn=sentry_dsn,
         traces_sample_rate=0.1,
         send_default_pii=False,
+        disabled_integrations=_disabled,
     )
 
 logger = setup_logging()
@@ -53,6 +62,7 @@ app.include_router(settlements.router, prefix="/api")
 app.include_router(exchange.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(balances.router, prefix="/api")
+app.include_router(receipts.router, prefix="/api")
 
 
 @app.get("/health")
