@@ -55,5 +55,6 @@ async def scan_receipt(
             {"description": item.description, "amount": item.amount, "quantity": item.quantity}
             for item in result.line_items
         ],
+        "total": result.total,
         "extras": result.extras,
     }

@@ -12,6 +12,7 @@ class ReceiptLineItem(BaseModel):
 class ReceiptExtractionResult(BaseModel):
     title: str | None = None  # best-guess description (e.g. "Ciao restaurant dinner")
     line_items: list[ReceiptLineItem]
+    total: float | None = None  # grand total of the receipt (including tax, tips, fees, etc.)
     extras: float | None = None  # sum of tax, tips, fees, service charges — everything except line items
 
 

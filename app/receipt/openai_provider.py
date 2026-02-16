@@ -12,6 +12,7 @@ Rules:
 - line_items: only actual purchased items/products/services with their prices
 - amount is the total price for that line item (price * quantity), as a decimal number with full precision
 - quantity is optional (null if not visible)
+- total: the grand total shown on the receipt (the final amount paid, including everything). null if not visible.
 - extras: the sum of ALL non-item charges — tax, tips, service charges, fees, gratuity, etc. Add them all together into one number. null if none found.
 - Do NOT include tax/tips/fees/service charges as line_items
 - Do NOT detect or return currency — just extract the raw numbers
